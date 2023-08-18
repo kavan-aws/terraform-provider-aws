@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -53,6 +54,38 @@ func TestAccFinSpaceKxCluster_basic(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccFinSpaceKxCluster_invalidEnvironmentId(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+
+	ctx := acctest.Context(t)
+	var kxcluster finspace.GetKxClusterOutput
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	invalidEnvironmentId := sdkacctest.RandString(22)
+	resourceName := "aws_finspace_kx_cluster.test"
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckKxClusterDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccKxClusterConfig_environmentId(rName, invalidEnvironmentId),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckKxClusterExists(ctx, resourceName, &kxcluster),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "status", string(types.KxClusterStatusRunning)),
+				),
+				ExpectError: regexp.MustCompile("ResourceNotFoundException: No matching Environment found with requested ID"),
 			},
 		},
 	})
@@ -634,6 +667,32 @@ resource "aws_finspace_kx_cluster" "test" {
   }
 }
 `, rName))
+}
+
+func testAccKxClusterConfig_environmentId(rName, environmentId string) string {
+	return acctest.ConfigCompose(
+		testAccKxClusterConfigBase(rName),
+		fmt.Sprintf(`
+resource "aws_finspace_kx_cluster" "test" {
+  name                 = %[1]q
+  environment_id       = %[2]q
+  type                 = "HDB"
+  release_label        = "1.0"
+  az_mode              = "SINGLE"
+  availability_zone_id = aws_finspace_kx_environment.test.availability_zones[0]
+  capacity_configuration {
+    node_count = 2
+    node_type  = "kx.s.xlarge"
+  }
+
+  vpc_configuration {
+    vpc_id             = aws_vpc.test.id
+    security_group_ids = [aws_security_group.test.id]
+    subnet_ids         = [aws_subnet.test.id]
+    ip_address_type    = "IP_V4"
+  }
+}
+`, rName, environmentId))
 }
 
 func testAccKxClusterConfig_description(rName, description string) string {
