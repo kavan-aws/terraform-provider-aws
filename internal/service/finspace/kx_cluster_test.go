@@ -65,10 +65,9 @@ func TestAccFinSpaceKxCluster_invalidEnvironmentId(t *testing.T) {
 	}
 
 	ctx := acctest.Context(t)
-	var kxcluster finspace.GetKxClusterOutput
+	var kxEnvironment finspace.GetKxEnvironmentOutput
 	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
 	invalidEnvironmentId := sdkacctest.RandString(22)
-	resourceName := "aws_finspace_kx_cluster.test"
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
@@ -79,12 +78,11 @@ func TestAccFinSpaceKxCluster_invalidEnvironmentId(t *testing.T) {
 		CheckDestroy:             testAccCheckKxClusterDestroy(ctx),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccKxClusterConfig_environmentId(rName, invalidEnvironmentId),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckKxClusterExists(ctx, resourceName, &kxcluster),
-					resource.TestCheckResourceAttr(resourceName, "name", rName),
-					resource.TestCheckResourceAttr(resourceName, "status", string(types.KxClusterStatusRunning)),
-				),
+				Config: testAccKxClusterConfigBase(rName),
+				Check:  testAccCheckKxEnvironmentExists(ctx, "aws_finspace_kx_environment.test", &kxEnvironment),
+			},
+			{
+				Config:      testAccKxClusterConfig_environmentId(rName, invalidEnvironmentId),
 				ExpectError: regexp.MustCompile("ResourceNotFoundException: No matching Environment found with requested ID"),
 			},
 		},
