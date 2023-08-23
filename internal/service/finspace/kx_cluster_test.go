@@ -328,6 +328,37 @@ func TestAccFinSpaceKxCluster_rdb(t *testing.T) {
 	})
 }
 
+func TestAccFinSpaceKxCluster_rdbInvalidEnvironmentId(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+
+	ctx := acctest.Context(t)
+	var kxEnvironment finspace.GetKxEnvironmentOutput
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	invalidEnvironmentId := sdkacctest.RandString(22)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckKxClusterDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccKxClusterConfigBase(rName),
+				Check:  testAccCheckKxEnvironmentExists(ctx, "aws_finspace_kx_environment.test", &kxEnvironment),
+			},
+			{
+				Config:      testAccKxClusterConfig_rdbEnvironmentId(rName, invalidEnvironmentId),
+				ExpectError: regexp.MustCompile("ResourceNotFoundException: No matching Environment found with requested ID"),
+			},
+		},
+	})
+}
+
 func TestAccFinSpaceKxCluster_executionRole(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping long-running test in short mode")
@@ -1090,6 +1121,38 @@ resource "aws_finspace_kx_cluster" "test" {
   }
 }
 `, rName))
+}
+
+func testAccKxClusterConfig_rdbEnvironmentId(rName, environmentId string) string {
+	return acctest.ConfigCompose(
+		testAccKxClusterConfigBase(rName),
+		fmt.Sprintf(`
+resource "aws_finspace_kx_cluster" "test" {
+  name                 = %[1]q
+  environment_id       = %[2]q
+  type                 = "RDB"
+  release_label        = "1.0"
+  az_mode              = "SINGLE"
+  availability_zone_id = aws_finspace_kx_environment.test.availability_zones[0]
+
+  savedown_storage_configuration {
+    type = "SDS01"
+    size = 500
+  }
+
+  capacity_configuration {
+    node_count = 2
+    node_type  = "kx.s.xlarge"
+  }
+
+  vpc_configuration {
+    vpc_id             = aws_vpc.test.id
+    security_group_ids = [aws_security_group.test.id]
+    subnet_ids         = [aws_subnet.test.id]
+    ip_address_type    = "IP_V4"
+  }
+}
+`, rName, environmentId))
 }
 
 func testAccKxClusterConfig_executionRole(rName string) string {
