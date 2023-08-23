@@ -217,6 +217,7 @@ func TestAccFinSpaceKxCluster_cacheConfigurations(t *testing.T) {
 	var kxcluster finspace.GetKxClusterOutput
 	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
 	resourceName := "aws_finspace_kx_cluster.test"
+	clusterType := "HDB"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -228,7 +229,7 @@ func TestAccFinSpaceKxCluster_cacheConfigurations(t *testing.T) {
 		CheckDestroy:             testAccCheckKxClusterDestroy(ctx),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccKxClusterConfig_cacheConfigurations(rName),
+				Config: testAccKxClusterConfig_cacheConfigurations(rName, clusterType),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckKxClusterExists(ctx, resourceName, &kxcluster),
 					resource.TestCheckResourceAttr(resourceName, "status", string(types.KxClusterStatusRunning)),
@@ -906,7 +907,7 @@ resource "aws_finspace_kx_cluster" "test" {
 `, rName))
 }
 
-func testAccKxClusterConfig_cacheConfigurations(rName string) string {
+func testAccKxClusterConfig_cacheConfigurations(rName, clusterType string) string {
 	return acctest.ConfigCompose(
 		testAccKxClusterConfigBase(rName),
 		fmt.Sprintf(`
@@ -918,7 +919,7 @@ resource "aws_finspace_kx_database" "test" {
 resource "aws_finspace_kx_cluster" "test" {
   name                 = %[1]q
   environment_id       = aws_finspace_kx_environment.test.id
-  type                 = "HDB"
+  type                 = %[2]q
   release_label        = "1.0"
   az_mode              = "SINGLE"
   availability_zone_id = aws_finspace_kx_environment.test.availability_zones[0]
@@ -948,7 +949,7 @@ resource "aws_finspace_kx_cluster" "test" {
     ip_address_type    = "IP_V4"
   }
 }
-`, rName))
+`, rName, clusterType))
 }
 
 func testAccKxClusterConfig_code(rName, path string) string {
@@ -1153,6 +1154,37 @@ resource "aws_finspace_kx_cluster" "test" {
   }
 }
 `, rName, environmentId))
+}
+
+func TestAccFinSpaceKxCluster_rdbCacheNoSaveDown(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+
+	ctx := acctest.Context(t)
+	var kxEnvironment finspace.GetKxEnvironmentOutput
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	clusterType := "RDB"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckKxClusterDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccKxClusterConfigBase(rName),
+				Check:  testAccCheckKxEnvironmentExists(ctx, "aws_finspace_kx_environment.test", &kxEnvironment),
+			},
+			{
+				Config:      testAccKxClusterConfig_cacheConfigurations(rName, clusterType),
+				ExpectError: regexp.MustCompile("ValidationException: A cluster of type RDB must have savedown storage specified"),
+			},
+		},
+	})
 }
 
 func testAccKxClusterConfig_executionRole(rName string) string {
