@@ -113,6 +113,14 @@ func TestAccFinSpaceKxCluster_delete(t *testing.T) {
 				Config: testAccKxClusterConfig_noCluster(rName),
 				Check:  testAccCheckKxClusterDestroy(ctx),
 			},
+			{
+				Config: testAccKxClusterConfig_rdb(rName),
+				Check:  testAccCheckKxClusterDestroy(ctx),
+			},
+			{
+				Config: testAccKxClusterConfig_noCluster(rName),
+				Check:  testAccCheckKxClusterDestroy(ctx),
+			},
 		},
 	})
 }
