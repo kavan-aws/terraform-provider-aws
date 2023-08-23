@@ -115,7 +115,7 @@ func TestAccFinSpaceKxCluster_delete(t *testing.T) {
 			},
 			{
 				Config: testAccKxClusterConfig_rdb(rName),
-				Check:  testAccCheckKxClusterDestroy(ctx),
+				Check:  testAccCheckKxClusterExists(ctx, "aws_finspace_kx_cluster.test", &kxCluster),
 			},
 			{
 				Config: testAccKxClusterConfig_noCluster(rName),
