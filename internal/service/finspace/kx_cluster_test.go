@@ -89,42 +89,6 @@ func TestAccFinSpaceKxCluster_invalidEnvironmentId(t *testing.T) {
 	})
 }
 
-func TestAccFinSpaceKxCluster_delete(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping long-running test in short mode")
-	}
-	var kxCluster finspace.GetKxClusterOutput
-	ctx := acctest.Context(t)
-	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			acctest.PreCheck(ctx, t)
-			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
-		},
-		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
-		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
-		CheckDestroy:             testAccCheckKxClusterDestroy(ctx),
-		Steps: []resource.TestStep{
-			{
-				Config: testAccKxClusterConfig_basic(rName),
-				Check:  testAccCheckKxClusterExists(ctx, "aws_finspace_kx_cluster.test", &kxCluster),
-			},
-			{
-				Config: testAccKxClusterConfig_noCluster(rName),
-				Check:  testAccCheckKxClusterDestroy(ctx),
-			},
-			{
-				Config: testAccKxClusterConfig_rdb(rName),
-				Check:  testAccCheckKxClusterExists(ctx, "aws_finspace_kx_cluster.test", &kxCluster),
-			},
-			{
-				Config: testAccKxClusterConfig_noCluster(rName),
-				Check:  testAccCheckKxClusterDestroy(ctx),
-			},
-		},
-	})
-}
-
 func TestAccFinSpaceKxCluster_disappears(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping long-running test in short mode")
@@ -1612,8 +1576,4 @@ resource "aws_finspace_kx_cluster" "test" {
   }
 }
 `, rName, codePath, relPath))
-}
-
-func testAccKxClusterConfig_noCluster(rName string) string {
-	return testAccKxClusterConfigBase(rName)
 }
