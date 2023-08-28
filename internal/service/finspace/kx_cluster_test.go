@@ -189,7 +189,6 @@ func TestAccFinSpaceKxCluster_cacheConfigurations(t *testing.T) {
 	var kxcluster finspace.GetKxClusterOutput
 	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
 	resourceName := "aws_finspace_kx_cluster.test"
-	clusterType := "HDB"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -201,7 +200,7 @@ func TestAccFinSpaceKxCluster_cacheConfigurations(t *testing.T) {
 		CheckDestroy:             testAccCheckKxClusterDestroy(ctx),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccKxClusterConfig_cacheConfigurations(rName, clusterType),
+				Config: testAccKxClusterConfig_cacheConfigurations(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckKxClusterExists(ctx, resourceName, &kxcluster),
 					resource.TestCheckResourceAttr(resourceName, "status", string(types.KxClusterStatusRunning)),
@@ -412,7 +411,6 @@ func TestAccFinSpaceKxCluster_rdbCacheNoSaveDown(t *testing.T) {
 	ctx := acctest.Context(t)
 	var kxEnvironment finspace.GetKxEnvironmentOutput
 	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
-	clusterType := "RDB"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -428,7 +426,7 @@ func TestAccFinSpaceKxCluster_rdbCacheNoSaveDown(t *testing.T) {
 				Check:  testAccCheckKxEnvironmentExists(ctx, "aws_finspace_kx_environment.test", &kxEnvironment),
 			},
 			{
-				Config:      testAccKxClusterConfig_cacheConfigurations(rName, clusterType),
+				Config:      testAccKxClusterConfig_rdbCacheConfigurationsNoSaveDown(rName),
 				ExpectError: regexp.MustCompile("ValidationException: A cluster of type RDB must have savedown storage specified"),
 			},
 		},
@@ -982,7 +980,7 @@ resource "aws_finspace_kx_cluster" "test" {
 `, rName))
 }
 
-func testAccKxClusterConfig_cacheConfigurations(rName, clusterType string) string {
+func testAccKxClusterConfig_cacheConfigurations(rName string) string {
 	return acctest.ConfigCompose(
 		testAccKxClusterConfigBase(rName),
 		fmt.Sprintf(`
@@ -994,7 +992,7 @@ resource "aws_finspace_kx_database" "test" {
 resource "aws_finspace_kx_cluster" "test" {
   name                 = %[1]q
   environment_id       = aws_finspace_kx_environment.test.id
-  type                 = %[2]q
+  type                 = "HDB"
   release_label        = "1.0"
   az_mode              = "SINGLE"
   availability_zone_id = aws_finspace_kx_environment.test.availability_zones[0]
@@ -1024,7 +1022,52 @@ resource "aws_finspace_kx_cluster" "test" {
     ip_address_type    = "IP_V4"
   }
 }
-`, rName, clusterType))
+`, rName))
+}
+
+func testAccKxClusterConfig_rdbCacheConfigurationsNoSaveDown(rName string) string {
+	return acctest.ConfigCompose(
+		testAccKxClusterConfigBase(rName),
+		fmt.Sprintf(`
+resource "aws_finspace_kx_database" "test" {
+  name           = %[1]q
+  environment_id = aws_finspace_kx_environment.test.id
+}
+
+resource "aws_finspace_kx_cluster" "test" {
+  name                 = %[1]q
+  environment_id       = aws_finspace_kx_environment.test.id
+  type                 = "RDB"
+  release_label        = "1.0"
+  az_mode              = "SINGLE"
+  availability_zone_id = aws_finspace_kx_environment.test.availability_zones[0]
+
+  cache_storage_configurations {
+    type = "CACHE_1000"
+    size = 1200
+  }
+
+  database {
+    database_name = aws_finspace_kx_database.test.name
+    cache_configurations {
+      cache_type = "CACHE_1000"
+      db_paths   = ["/"]
+    }
+  }
+
+  capacity_configuration {
+    node_count = 2
+    node_type  = "kx.s.xlarge"
+  }
+
+  vpc_configuration {
+    vpc_id             = aws_vpc.test.id
+    security_group_ids = [aws_security_group.test.id]
+    subnet_ids         = [aws_subnet.test.id]
+    ip_address_type    = "IP_V4"
+  }
+}
+`, rName))
 }
 
 func testAccKxClusterConfig_code(rName, path string) string {
