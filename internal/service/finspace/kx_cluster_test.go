@@ -67,7 +67,6 @@ func TestAccFinSpaceKxCluster_invalidEnvironmentId(t *testing.T) {
 	ctx := acctest.Context(t)
 	var kxEnvironment finspace.GetKxEnvironmentOutput
 	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
-	invalidEnvironmentId := sdkacctest.RandString(22)
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
@@ -82,7 +81,7 @@ func TestAccFinSpaceKxCluster_invalidEnvironmentId(t *testing.T) {
 				Check:  testAccCheckKxEnvironmentExists(ctx, "aws_finspace_kx_environment.test", &kxEnvironment),
 			},
 			{
-				Config:      testAccKxClusterConfig_environmentId(rName, invalidEnvironmentId),
+				Config:      testAccKxClusterConfig_invalidEnvironmentId(rName),
 				ExpectError: regexp.MustCompile("ResourceNotFoundException: No matching Environment found with requested ID"),
 			},
 		},
@@ -308,7 +307,6 @@ func TestAccFinSpaceKxCluster_rdbInvalidEnvironmentId(t *testing.T) {
 	ctx := acctest.Context(t)
 	var kxEnvironment finspace.GetKxEnvironmentOutput
 	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
-	invalidEnvironmentId := sdkacctest.RandString(22)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -324,7 +322,7 @@ func TestAccFinSpaceKxCluster_rdbInvalidEnvironmentId(t *testing.T) {
 				Check:  testAccCheckKxEnvironmentExists(ctx, "aws_finspace_kx_environment.test", &kxEnvironment),
 			},
 			{
-				Config:      testAccKxClusterConfig_rdbEnvironmentId(rName, invalidEnvironmentId),
+				Config:      testAccKxClusterConfig_rdbInvalidEnvironmentId(rName),
 				ExpectError: regexp.MustCompile("ResourceNotFoundException: No matching Environment found with requested ID"),
 			},
 		},
@@ -339,7 +337,6 @@ func TestAccFinSpaceKxCluster_rdbInvalidDatabaseName(t *testing.T) {
 	ctx := acctest.Context(t)
 	var kxEnvironment finspace.GetKxEnvironmentOutput
 	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
-	databaseName := "invalid-db"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -355,7 +352,7 @@ func TestAccFinSpaceKxCluster_rdbInvalidDatabaseName(t *testing.T) {
 				Check:  testAccCheckKxEnvironmentExists(ctx, "aws_finspace_kx_environment.test", &kxEnvironment),
 			},
 			{
-				Config:      testAccKxClusterConfig_rdbDatabaseName(rName, databaseName),
+				Config:      testAccKxClusterConfig_rdbInvalidDatabaseName(rName),
 				ExpectError: regexp.MustCompile("ResourceNotFoundException: Kx database"),
 			},
 		},
@@ -800,13 +797,13 @@ resource "aws_finspace_kx_cluster" "test" {
 `, rName))
 }
 
-func testAccKxClusterConfig_environmentId(rName, environmentId string) string {
+func testAccKxClusterConfig_invalidEnvironmentId(rName string) string {
 	return acctest.ConfigCompose(
 		testAccKxClusterConfigBase(rName),
 		fmt.Sprintf(`
 resource "aws_finspace_kx_cluster" "test" {
   name                 = %[1]q
-  environment_id       = %[2]q
+  environment_id       = "invalidenvironmentid"
   type                 = "HDB"
   release_label        = "1.0"
   az_mode              = "SINGLE"
@@ -823,7 +820,7 @@ resource "aws_finspace_kx_cluster" "test" {
     ip_address_type    = "IP_V4"
   }
 }
-`, rName, environmentId))
+`, rName))
 }
 
 func testAccKxClusterConfig_description(rName, description string) string {
@@ -1242,13 +1239,13 @@ resource "aws_finspace_kx_cluster" "test" {
 `, rName))
 }
 
-func testAccKxClusterConfig_rdbEnvironmentId(rName, environmentId string) string {
+func testAccKxClusterConfig_rdbInvalidEnvironmentId(rName string) string {
 	return acctest.ConfigCompose(
 		testAccKxClusterConfigBase(rName),
 		fmt.Sprintf(`
 resource "aws_finspace_kx_cluster" "test" {
   name                 = %[1]q
-  environment_id       = %[2]q
+  environment_id       = "invalidenvironmentid"
   type                 = "RDB"
   release_label        = "1.0"
   az_mode              = "SINGLE"
@@ -1271,10 +1268,10 @@ resource "aws_finspace_kx_cluster" "test" {
     ip_address_type    = "IP_V4"
   }
 }
-`, rName, environmentId))
+`, rName))
 }
 
-func testAccKxClusterConfig_rdbDatabaseName(rName, databaseName string) string {
+func testAccKxClusterConfig_rdbInvalidDatabaseName(rName string) string {
 	return acctest.ConfigCompose(
 		testAccKxClusterConfigBase(rName),
 		fmt.Sprintf(`
@@ -1297,7 +1294,7 @@ resource "aws_finspace_kx_cluster" "test" {
   }
 
   database {
-    database_name = %[2]q
+    database_name = "invalid-db"
   }
 
   capacity_configuration {
@@ -1312,7 +1309,7 @@ resource "aws_finspace_kx_cluster" "test" {
     ip_address_type    = "IP_V4"
   }
 }
-`, rName, databaseName))
+`, rName))
 }
 
 func testAccKxClusterConfig_rdbSaveDown(rName, saveDownType, saveDownSize string) string {
