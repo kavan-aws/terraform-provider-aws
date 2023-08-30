@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"os"
 	"testing"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/finspace"
 	"github.com/aws/aws-sdk-go-v2/service/finspace/types"
@@ -22,6 +22,15 @@ import (
 	tffinspace "github.com/hashicorp/terraform-provider-aws/internal/service/finspace"
 	"github.com/hashicorp/terraform-provider-aws/names"
 )
+
+func testAccPreCheckManagedKxLicenseEnabled(t *testing.T) {
+	if os.Getenv("FINSPACE_MANAGED_KX_LICENSE_ENABLED") == "" {
+		t.Skip(
+			"Environment variable FINSPACE_MANAGED_KX_LICENSE_ENABLED is not set. " +
+				"Certain managed KX resources require the target account to have an active " +
+				"license. Set the environment variable to any value to enable these tests.")
+	}
+}
 
 func TestAccFinSpaceKxCluster_basic(t *testing.T) {
 	if testing.Short() {
@@ -37,6 +46,7 @@ func TestAccFinSpaceKxCluster_basic(t *testing.T) {
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
 			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
@@ -102,6 +112,7 @@ func TestAccFinSpaceKxCluster_disappears(t *testing.T) {
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
 			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
@@ -133,6 +144,7 @@ func TestAccFinSpaceKxCluster_description(t *testing.T) {
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
 			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
@@ -163,6 +175,7 @@ func TestAccFinSpaceKxCluster_database(t *testing.T) {
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
 			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
@@ -193,6 +206,7 @@ func TestAccFinSpaceKxCluster_cacheConfigurations(t *testing.T) {
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
 			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
@@ -224,6 +238,7 @@ func TestAccFinSpaceKxCluster_code(t *testing.T) {
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
 			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
@@ -253,6 +268,7 @@ func TestAccFinSpaceKxCluster_multiAZ(t *testing.T) {
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
 			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
@@ -283,6 +299,7 @@ func TestAccFinSpaceKxCluster_rdb(t *testing.T) {
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
 			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
@@ -444,6 +461,7 @@ func TestAccFinSpaceKxCluster_executionRole(t *testing.T) {
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
 			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
@@ -474,6 +492,7 @@ func TestAccFinSpaceKxCluster_autoScaling(t *testing.T) {
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
 			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
@@ -507,6 +526,7 @@ func TestAccFinSpaceKxCluster_initializationScript(t *testing.T) {
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
 			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
@@ -536,6 +556,7 @@ func TestAccFinSpaceKxCluster_commandLineArgs(t *testing.T) {
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
 			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
@@ -567,6 +588,7 @@ func TestAccFinSpaceKxCluster_tags(t *testing.T) {
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
 			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
