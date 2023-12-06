@@ -185,6 +185,10 @@ func resourceKxDataviewCreate(ctx context.Context, d *schema.ResourceData, meta 
 	if out == nil || out.DataviewName == nil {
 		return append(diags, create.DiagError(names.FinSpace, create.ErrActionCreating, ResNameKxDataview, d.Get("name").(string), errors.New("empty output"))...)
 	}
+	if _, err := waitKxDataviewCreated(ctx, conn, d.Id(), d.Timeout(schema.TimeoutCreate)); err != nil {
+		return append(diags, create.DiagError(names.FinSpace, create.ErrActionWaitingForCreation, ResNameKxDataview, d.Get("name").(string), err)...)
+	}
+
 	return append(diags, resourceKxDataviewRead(ctx, d, meta)...)
 }
 
@@ -208,8 +212,8 @@ func resourceKxDataviewRead(ctx context.Context, d *schema.ResourceData, meta in
 	d.Set("changeset_id", out.ChangesetId)
 	d.Set("availability_zone_id", out.AvailabilityZoneId)
 	d.Set("status", out.Status)
-	d.Set("created_timestamp", out.CreatedTimestamp)
-	d.Set("last_modified_timestamp", out.LastModifiedTimestamp)
+	d.Set("created_timestamp", out.CreatedTimestamp.String())
+	d.Set("last_modified_timestamp", out.LastModifiedTimestamp.String())
 	d.Set("database_name", out.DatabaseName)
 	d.Set("environment_id", out.EnvironmentId)
 	d.Set("az_mode", out.AzMode)
@@ -240,6 +244,10 @@ func resourceKxDataviewUpdate(ctx context.Context, d *schema.ResourceData, meta 
 
 	if _, err := conn.UpdateKxDataview(ctx, in); err != nil {
 		return append(diags, create.DiagError(names.FinSpace, create.ErrActionUpdating, ResNameKxDataview, d.Get("name").(string), err)...)
+	}
+
+	if _, err := waitKxDataviewUpdated(ctx, conn, d.Id(), d.Timeout(schema.TimeoutUpdate)); err != nil {
+		return append(diags, create.DiagError(names.FinSpace, create.ErrActionWaitingForUpdate, ResNameKxDataview, d.Get("name").(string), err)...)
 	}
 
 	return append(diags, resourceKxDataviewRead(ctx, d, meta)...)
@@ -299,6 +307,52 @@ func findKxDataviewById(ctx context.Context, conn *finspace.Client, id string) (
 	return out, nil
 }
 
+func waitKxDataviewCreated(ctx context.Context, conn *finspace.Client, id string, timeout time.Duration) (*finspace.GetKxDataviewOutput, error) {
+	stateConf := &retry.StateChangeConf{
+		Pending:                   enum.Slice(types.KxDataviewStatusCreating),
+		Target:                    enum.Slice(types.KxDataviewStatusActive),
+		Refresh:                   statusKxDataview(ctx, conn, id),
+		Timeout:                   timeout,
+		NotFoundChecks:            20,
+		ContinuousTargetOccurence: 2,
+	}
+
+	outputRaw, err := stateConf.WaitForStateContext(ctx)
+	if out, ok := outputRaw.(*finspace.GetKxDataviewOutput); ok {
+		return out, err
+	}
+	return nil, err
+}
+
+func waitKxDataviewUpdated(ctx context.Context, conn *finspace.Client, id string, timeout time.Duration) (*finspace.GetKxDataviewOutput, error) {
+	stateConf := &retry.StateChangeConf{
+		Pending:                   enum.Slice(types.KxDataviewStatusUpdating),
+		Target:                    enum.Slice(types.KxDataviewStatusActive),
+		Refresh:                   statusKxDataview(ctx, conn, id),
+		Timeout:                   timeout,
+		NotFoundChecks:            20,
+		ContinuousTargetOccurence: 2,
+	}
+	outputRaw, err := stateConf.WaitForStateContext(ctx)
+
+	if out, ok := outputRaw.(*finspace.GetKxDataviewOutput); ok {
+		return out, err
+	}
+	return nil, err
+}
+func statusKxDataview(ctx context.Context, conn *finspace.Client, id string) retry.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		out, err := findKxDataviewById(ctx, conn, id)
+		if tfresource.NotFound(err) {
+			return nil, "", nil
+		}
+		if err != nil {
+			return nil, "", err
+		}
+		return out, string(out.Status), nil
+	}
+}
+
 func expandDbPath(tfList []string) []string {
 	if tfList == nil {
 		return nil
@@ -310,6 +364,7 @@ func expandDbPath(tfList []string) []string {
 	}
 	return s
 }
+
 func expandSegmentConfigurations(tfList []interface{}) []types.KxDataviewSegmentConfiguration {
 	if tfList == nil {
 		return nil

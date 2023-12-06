@@ -137,38 +137,75 @@ func testAccCheckKxDataviewDestroy(ctx context.Context) resource.TestCheckFunc {
 	}
 }
 
-//func testAccKxDataviewConfig_volume(rName string) string {
-//	return acctest.ConfigCompose(
-//		testAccKxDataviewConfigBase(rName),
-//		fmt.Sprintf(`
-//resource "aws_finspace_kx_volume" "test" {
-//  name                 = %[1]q
-//  environment_id       = aws_finspace_kx_environment.test.id
-//  availability_zones = [aws_finspace_kx_environment.test.availability_zones[0]]
-//  az_mode              = "SINGLE"
-//  type                 = "NAS_1"
-//  nas1_configuration {
-// 	  type= "SSD_250"
-// 	  size= 1200
-//  }
-//}
-//
-//resource "aws_finspace_kx_dataview" "test" {
-//  name                 = %[1]q
-//  environment_id       = aws_finspace_kx_environment.test.id
-//  database_name        = aws_finspace_kx_database.test.name
-//  auto_update          = true
-//  az_mode              = "SINGLE"
-//  availability_zone_id = aws_finspace_kx_environment.test.availability_zones[0]
-//  segment_configurations = [
-//	{
-//      db_paths = ["/*"]
-//	  volume_name = aws_finspace_kx_volume.test.name
-//	}
-//  ]
-//}
-//`, rName))
-//}
-//func TestAccFinSpaceKxDataview_volume(t *testing.T) {
-//
-//}
+func testAccKxDataviewVolumeBase(rName string) string {
+	return fmt.Sprintf(`
+resource "aws_finspace_kx_volume" "test" {
+  name                 = %[1]q
+  environment_id       = aws_finspace_kx_environment.test.id
+  availability_zones = [aws_finspace_kx_environment.test.availability_zones[0]]
+  az_mode              = "SINGLE"
+  type                 = "NAS_1"
+  nas1_configuration {
+	  type= "SSD_250"
+	  size= 1200
+  }
+}
+`, rName)
+}
+
+func testAccKxDataviewConfig_withKxVolume(rName string) string {
+	return acctest.ConfigCompose(
+		testAccKxDataviewConfigBase(rName),
+		testAccKxDataviewVolumeBase(rName),
+		fmt.Sprintf(`
+resource "aws_finspace_kx_dataview" "test" {
+  name                 = %[1]q
+  environment_id       = aws_finspace_kx_environment.test.id
+  database_name        = aws_finspace_kx_database.test.name
+  auto_update          = true
+  az_mode              = "SINGLE"
+  availability_zone_id = aws_finspace_kx_environment.test.availability_zones[0]
+
+  segment_configurations {
+      db_paths = ["/*"]
+ 	  volume_name = aws_finspace_kx_volume.test.name
+  }
+}
+`, rName))
+}
+
+func TestAccFinSpaceKxDataview_withKxVolume(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+	ctx := acctest.Context(t)
+
+	var kxdataview finspace.GetKxDataviewOutput
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	resourceName := "aws_finspace_kx_dataview.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+		},
+		ErrorCheck: acctest.ErrorCheck(t, finspace.ServiceID),
+
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+
+		CheckDestroy: testAccCheckKxDataviewDestroy(ctx),
+
+		Steps: []resource.TestStep{
+			{
+				Config: testAccKxDataviewConfig_withKxVolume(rName),
+
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckKxDataviewExists(ctx, resourceName, &kxdataview),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "status", string(types.KxDataviewStatusActive)),
+				),
+			},
+		},
+	})
+}
