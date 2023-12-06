@@ -17,7 +17,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-provider-aws/internal/acctest"
-	"github.com/hashicorp/terraform-provider-aws/internal/conns"
+
+	//"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
 	tffinspace "github.com/hashicorp/terraform-provider-aws/internal/service/finspace"
 	"github.com/hashicorp/terraform-provider-aws/names"
@@ -576,9 +577,73 @@ func TestAccFinSpaceKxCluster_tags(t *testing.T) {
 	})
 }
 
+func TestAccFinSpaceKxCluster_ScalingGroup(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+
+	ctx := acctest.Context(t)
+	var kxcluster finspace.GetKxClusterOutput
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	resourceName := "aws_finspace_kx_cluster.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckKxClusterDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccKxClusterConfig_ScalingGroup(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckKxClusterExists(ctx, resourceName, &kxcluster),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "status", string(types.KxClusterStatusRunning)),
+				),
+			},
+		},
+	})
+}
+
+func TestAccFinSpaceKxRDBClusterInScalingGroup_withKxVolume(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+
+	ctx := acctest.Context(t)
+	var kxcluster finspace.GetKxClusterOutput
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	resourceName := "aws_finspace_kx_cluster.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckKxClusterDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccKxRDBClusterConfigInScalingGroup_withKxVolume(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckKxClusterExists(ctx, resourceName, &kxcluster),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "status", string(types.KxClusterStatusRunning)),
+				),
+			},
+		},
+	})
+}
+
 func testAccCheckKxClusterDestroy(ctx context.Context) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		conn := acctest.Provider.Meta().(*conns.AWSClient).FinSpaceClient(ctx)
+		conn := tffinspace.TempFinspaceClient()
 
 		for _, rs := range s.RootModule().Resources {
 			if rs.Type != "aws_finspace_kx_cluster" {
@@ -616,7 +681,7 @@ func testAccCheckKxClusterExists(ctx context.Context, name string, kxcluster *fi
 			return create.Error(names.FinSpace, create.ErrActionCheckingExistence, tffinspace.ResNameKxCluster, name, errors.New("not set"))
 		}
 
-		conn := acctest.Provider.Meta().(*conns.AWSClient).FinSpaceClient(ctx)
+		conn := tffinspace.TempFinspaceClient()
 		resp, err := conn.GetKxCluster(ctx, &finspace.GetKxClusterInput{
 			ClusterName:   aws.String(rs.Primary.Attributes["name"]),
 			EnvironmentId: aws.String(rs.Primary.Attributes["environment_id"]),
@@ -663,7 +728,7 @@ data "aws_iam_policy_document" "key_policy" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {
@@ -746,6 +811,33 @@ resource "aws_route" "r" {
 `, rName)
 }
 
+func testAccKxClusterConfigScalingGroupBase(rName string) string {
+	return fmt.Sprintf(`
+  resource "aws_finspace_kx_scaling_group" "test" {
+    name                 = %[1]q
+    environment_id       = aws_finspace_kx_environment.test.id
+    availability_zone_id = aws_finspace_kx_environment.test.availability_zones[0]
+    host_type            = "kx.sg.4xlarge"
+  }
+  `, rName)
+}
+
+func testAccKxClusterConfigKxVolumeBase(rName string) string {
+	return fmt.Sprintf(`
+		resource "aws_finspace_kx_volume" "test" {
+			name                 = %[1]q
+			environment_id       = aws_finspace_kx_environment.test.id
+			availability_zones = [aws_finspace_kx_environment.test.availability_zones[0]]
+			az_mode              = "SINGLE"
+			type                 = "NAS_1"
+			nas1_configuration {
+				type= "SSD_1000"
+				size= 1200
+			}
+ 		}
+	`, rName)
+}
+
 func testAccKxClusterConfig_basic(rName string) string {
 	return acctest.ConfigCompose(
 		testAccKxClusterConfigBase(rName),
@@ -767,6 +859,65 @@ resource "aws_finspace_kx_cluster" "test" {
     security_group_ids = [aws_security_group.test.id]
     subnet_ids         = [aws_subnet.test.id]
     ip_address_type    = "IP_V4"
+  }
+}
+`, rName))
+}
+
+func testAccKxClusterConfig_ScalingGroup(rName string) string {
+	return acctest.ConfigCompose(
+		testAccKxClusterConfigBase(rName),
+		testAccKxClusterConfigScalingGroupBase(rName),
+		fmt.Sprintf(`
+resource "aws_finspace_kx_cluster" "test" {
+  name                 = %[1]q
+  environment_id       = aws_finspace_kx_environment.test.id
+  type                 = "HDB"
+  release_label        = "1.0"
+  az_mode              = "SINGLE"
+  availability_zone_id = aws_finspace_kx_environment.test.availability_zones[0]
+  vpc_configuration {
+    vpc_id             = aws_vpc.test.id
+    security_group_ids = [aws_security_group.test.id]
+    subnet_ids         = [aws_subnet.test.id]
+    ip_address_type    = "IP_V4"
+  }
+  scaling_group_configuration {
+    scaling_group_name = aws_finspace_kx_scaling_group.test.name
+    memory_limit = 200
+    memory_reservation = 100
+    node_count = 1
+    cpu = 0.5
+  }
+}
+`, rName))
+}
+
+func testAccKxRDBClusterConfigInScalingGroup_withKxVolume(rName string) string {
+	return acctest.ConfigCompose(
+		testAccKxClusterConfigBase(rName),
+		testAccKxClusterConfigKxVolumeBase(rName),
+		testAccKxClusterConfigScalingGroupBase(rName),
+		fmt.Sprintf(`
+resource "aws_finspace_kx_cluster" "test" {
+  name                 = %[1]q
+  environment_id       = aws_finspace_kx_environment.test.id
+  type                 = "RDB"
+  release_label        = "1.0"
+  az_mode              = "SINGLE"
+  availability_zone_id = aws_finspace_kx_environment.test.availability_zones[0]
+  vpc_configuration {
+    vpc_id             = aws_vpc.test.id
+    security_group_ids = [aws_security_group.test.id]
+    subnet_ids         = [aws_subnet.test.id]
+    ip_address_type    = "IP_V4"
+  }
+  scaling_group_configuration {
+    scaling_group_name = aws_finspace_kx_scaling_group.test.name
+    memory_limit = 200
+    memory_reservation = 100
+    node_count = 1
+    cpu = 0.5
   }
 }
 `, rName))
@@ -820,7 +971,7 @@ data "aws_iam_policy_document" "bucket_policy" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {
@@ -847,7 +998,7 @@ data "aws_iam_policy_document" "bucket_policy" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {
@@ -1168,7 +1319,7 @@ data "aws_iam_policy_document" "bucket_policy" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {
@@ -1195,7 +1346,7 @@ data "aws_iam_policy_document" "bucket_policy" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {
@@ -1354,7 +1505,7 @@ resource "aws_iam_role" "test" {
         Effect = "Allow"
         Sid    = ""
         Principal = {
-          "Service" : "prod.finspacekx.aws.internal",
+          "Service" : "gamma.finspacekx.aws.internal",
           "AWS" : "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:root"
         }
       },
@@ -1442,7 +1593,7 @@ data "aws_iam_policy_document" "test" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {
@@ -1469,7 +1620,7 @@ data "aws_iam_policy_document" "test" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {

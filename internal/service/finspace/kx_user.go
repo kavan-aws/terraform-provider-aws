@@ -16,7 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/hashicorp/terraform-provider-aws/internal/conns"
+
+	// "github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
 	"github.com/hashicorp/terraform-provider-aws/internal/flex"
 	tftags "github.com/hashicorp/terraform-provider-aws/internal/tags"
@@ -81,7 +82,7 @@ const (
 
 func resourceKxUserCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	client := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	client := TempFinspaceClient()
 
 	in := &finspace.CreateKxUserInput{
 		UserName:      aws.String(d.Get("name").(string)),
@@ -114,7 +115,7 @@ func resourceKxUserCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 func resourceKxUserRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	out, err := findKxUserByID(ctx, conn, d.Id())
 	if !d.IsNewResource() && tfresource.NotFound(err) {
@@ -137,7 +138,7 @@ func resourceKxUserRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 func resourceKxUserUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	if d.HasChange("iam_role") {
 		in := &finspace.UpdateKxUserInput{
@@ -157,7 +158,7 @@ func resourceKxUserUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 func resourceKxUserDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	log.Printf("[INFO] Deleting FinSpace KxUser %s", d.Id())
 

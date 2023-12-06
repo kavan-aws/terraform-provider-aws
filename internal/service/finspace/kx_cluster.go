@@ -18,7 +18,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/hashicorp/terraform-provider-aws/internal/conns"
+
+	// "github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
 	"github.com/hashicorp/terraform-provider-aws/internal/enum"
 	"github.com/hashicorp/terraform-provider-aws/internal/flex"
@@ -132,7 +133,7 @@ func ResourceKxCluster() *schema.Resource {
 			},
 			"capacity_configuration": {
 				Type:     schema.TypeList,
-				Required: true,
+				Optional: true,
 				ForceNew: true,
 				MaxItems: 1,
 				Elem: &schema.Resource{
@@ -346,6 +347,46 @@ func ResourceKxCluster() *schema.Resource {
 					},
 				},
 			},
+			"scaling_group_configuration": {
+				Type:     schema.TypeList,
+				Optional: true,
+				ForceNew: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"scaling_group_name": {
+							Type:         schema.TypeString,
+							Required:     true,
+							ForceNew:     true,
+							ValidateFunc: validation.StringLenBetween(3, 63),
+						},
+						"cpu": {
+							Type:         schema.TypeFloat,
+							Optional:     true,
+							ForceNew:     true,
+							ValidateFunc: validation.FloatAtLeast(0.1),
+						},
+						"node_count": {
+							Type:         schema.TypeInt,
+							Required:     true,
+							ForceNew:     true,
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						"memory_limit": {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							ForceNew:     true,
+							ValidateFunc: validation.IntAtLeast(6),
+						},
+						"memory_reservation": {
+							Type:         schema.TypeInt,
+							Required:     true,
+							ForceNew:     true,
+							ValidateFunc: validation.IntAtLeast(6),
+						},
+					},
+				},
+			},
 		},
 
 		CustomizeDiff: verify.SetTagsDiff,
@@ -360,7 +401,7 @@ const (
 
 func resourceKxClusterCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	environmentId := d.Get("environment_id").(string)
 	clusterName := d.Get("name").(string)
@@ -375,14 +416,13 @@ func resourceKxClusterCreate(ctx context.Context, d *schema.ResourceData, meta i
 	d.SetId(rID)
 
 	in := &finspace.CreateKxClusterInput{
-		EnvironmentId:         aws.String(environmentId),
-		ClusterName:           aws.String(clusterName),
-		ClusterType:           types.KxClusterType(d.Get("type").(string)),
-		ReleaseLabel:          aws.String(d.Get("release_label").(string)),
-		AzMode:                types.KxAzMode(d.Get("az_mode").(string)),
-		CapacityConfiguration: expandCapacityConfiguration(d.Get("capacity_configuration").([]interface{})),
-		ClientToken:           aws.String(id.UniqueId()),
-		Tags:                  getTagsIn(ctx),
+		EnvironmentId: aws.String(environmentId),
+		ClusterName:   aws.String(clusterName),
+		ClusterType:   types.KxClusterType(d.Get("type").(string)),
+		ReleaseLabel:  aws.String(d.Get("release_label").(string)),
+		AzMode:        types.KxAzMode(d.Get("az_mode").(string)),
+		ClientToken:   aws.String(id.UniqueId()),
+		Tags:          getTagsIn(ctx),
 	}
 
 	if v, ok := d.GetOk("description"); ok {
@@ -399,6 +439,10 @@ func resourceKxClusterCreate(ctx context.Context, d *schema.ResourceData, meta i
 
 	if v, ok := d.GetOk("availability_zone_id"); ok {
 		in.AvailabilityZoneId = aws.String(v.(string))
+	}
+
+	if v, ok := d.GetOk("capacity_configuration"); ok && len(v.([]interface{})) > 0 && v.([]interface{})[0] != nil {
+		in.CapacityConfiguration = expandCapacityConfiguration(v.([]interface{}))
 	}
 
 	if v, ok := d.GetOk("command_line_arguments"); ok && len(v.(map[string]interface{})) > 0 {
@@ -429,6 +473,10 @@ func resourceKxClusterCreate(ctx context.Context, d *schema.ResourceData, meta i
 		in.Code = expandCode(v.([]interface{}))
 	}
 
+	if v, ok := d.GetOk("scaling_group_configuration"); ok && len(v.([]interface{})) > 0 && v.([]interface{})[0] != nil {
+		in.ScalingGroupConfiguration = expandScalingGroupConfiguration(v.([]interface{}))
+	}
+
 	out, err := conn.CreateKxCluster(ctx, in)
 	if err != nil {
 		return create.AppendDiagError(diags, names.FinSpace, create.ErrActionCreating, ResNameKxCluster, d.Get("name").(string), err)
@@ -447,7 +495,7 @@ func resourceKxClusterCreate(ctx context.Context, d *schema.ResourceData, meta i
 
 func resourceKxClusterRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	out, err := findKxClusterByID(ctx, conn, d.Id())
 	if !d.IsNewResource() && tfresource.NotFound(err) {
@@ -507,6 +555,10 @@ func resourceKxClusterRead(ctx context.Context, d *schema.ResourceData, meta int
 		return create.AppendDiagError(diags, names.FinSpace, create.ErrActionSetting, ResNameKxCluster, d.Id(), err)
 	}
 
+	if err := d.Set("scaling_group_configuration", flattenScalingGroupConfiguration(out.ScalingGroupConfiguration)); err != nil {
+		return append(diags, create.DiagError(names.FinSpace, create.ErrActionSetting, ResNameKxCluster, d.Id(), err)...)
+	}
+
 	// compose cluster ARN using environment ARN
 	parts, err := flex.ExpandResourceId(d.Id(), kxUserIDPartCount, false)
 	if err != nil {
@@ -525,7 +577,7 @@ func resourceKxClusterRead(ctx context.Context, d *schema.ResourceData, meta int
 
 func resourceKxClusterUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	updateDb := false
 	updateCode := false
@@ -590,7 +642,7 @@ func resourceKxClusterUpdate(ctx context.Context, d *schema.ResourceData, meta i
 
 func resourceKxClusterDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	log.Printf("[INFO] Deleting FinSpace KxCluster %s", d.Id())
 	_, err := conn.DeleteKxCluster(ctx, &finspace.DeleteKxClusterInput{
@@ -762,6 +814,38 @@ func expandAutoScalingConfiguration(tfList []interface{}) *types.AutoScalingConf
 
 	if v, ok := tfMap["scale_out_cooldown_seconds"].(float64); ok && v != 0 {
 		a.ScaleOutCooldownSeconds = aws.Float64(v)
+	}
+
+	return a
+}
+
+func expandScalingGroupConfiguration(tfList []interface{}) *types.KxScalingGroupConfiguration {
+	if len(tfList) == 0 || tfList[0] == nil {
+		return nil
+	}
+
+	tfMap := tfList[0].(map[string]interface{})
+
+	a := &types.KxScalingGroupConfiguration{}
+
+	if v, ok := tfMap["scaling_group_name"].(string); ok && v != "" {
+		a.ScalingGroupName = aws.String(v)
+	}
+
+	if v, ok := tfMap["node_count"].(int); ok && v != 0 {
+		a.NodeCount = aws.Int32(int32(v))
+	}
+
+	if v, ok := tfMap["memory_limit"].(int); ok && v != 0 {
+		a.MemoryLimit = aws.Int32(int32(v))
+	}
+
+	if v, ok := tfMap["cpu"].(float64); ok && v != 0 {
+		a.Cpu = aws.Float64(v)
+	}
+
+	if v, ok := tfMap["memory_reservation"].(int); ok && v != 0 {
+		a.MemoryReservation = aws.Int32(int32(v))
 	}
 
 	return a
@@ -1054,6 +1138,36 @@ func flattenAutoScalingConfiguration(apiObject *types.AutoScalingConfiguration) 
 
 	if v := apiObject.ScaleOutCooldownSeconds; v != nil {
 		m["scale_out_cooldown_seconds"] = aws.ToFloat64(v)
+	}
+
+	return []interface{}{m}
+}
+
+func flattenScalingGroupConfiguration(apiObject *types.KxScalingGroupConfiguration) []interface{} {
+	if apiObject == nil {
+		return nil
+	}
+
+	m := map[string]interface{}{}
+
+	if v := apiObject.ScalingGroupName; v != nil {
+		m["scaling_group_name"] = aws.ToString(v)
+	}
+
+	if v := apiObject.NodeCount; v != nil {
+		m["node_count"] = aws.ToInt32(v)
+	}
+
+	if v := apiObject.MemoryLimit; v != nil {
+		m["memory_limit"] = aws.ToInt32(v)
+	}
+
+	if v := apiObject.Cpu; v != nil {
+		m["cpu"] = aws.ToFloat64(v)
+	}
+
+	if v := apiObject.MemoryReservation; v != nil {
+		m["memory_reservation"] = aws.ToInt32(v)
 	}
 
 	return []interface{}{m}

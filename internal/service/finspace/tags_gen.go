@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/finspace"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/hashicorp/terraform-provider-aws/internal/conns"
+	// "github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/logging"
 	tftags "github.com/hashicorp/terraform-provider-aws/internal/tags"
 	"github.com/hashicorp/terraform-provider-aws/internal/types"
@@ -35,7 +35,7 @@ func listTags(ctx context.Context, conn *finspace.Client, identifier string) (tf
 // ListTags lists finspace service tags and set them in Context.
 // It is called from outside this package.
 func (p *servicePackage) ListTags(ctx context.Context, meta any, identifier string) error {
-	tags, err := listTags(ctx, meta.(*conns.AWSClient).FinSpaceClient(ctx), identifier)
+	tags, err := listTags(ctx, TempFinspaceClient(), identifier)
 
 	if err != nil {
 		return err
@@ -133,5 +133,5 @@ func updateTags(ctx context.Context, conn *finspace.Client, identifier string, o
 // UpdateTags updates finspace service tags.
 // It is called from outside this package.
 func (p *servicePackage) UpdateTags(ctx context.Context, meta any, identifier string, oldTags, newTags any) error {
-	return updateTags(ctx, meta.(*conns.AWSClient).FinSpaceClient(ctx), identifier, oldTags, newTags)
+	return updateTags(ctx, TempFinspaceClient(), identifier, oldTags, newTags)
 }
