@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
 	"github.com/hashicorp/terraform-provider-aws/internal/enum"
-	"github.com/hashicorp/terraform-provider-aws/internal/errs"
 	"github.com/hashicorp/terraform-provider-aws/internal/flex"
 	tftags "github.com/hashicorp/terraform-provider-aws/internal/tags"
 	"github.com/hashicorp/terraform-provider-aws/internal/tfresource"
@@ -54,6 +53,10 @@ func ResourceKxVolume() *schema.Resource {
 				},
 				Required: true,
 				ForceNew: true,
+			},
+			"arn": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 			"az_mode": {
 				Type:             schema.TypeString,
@@ -246,7 +249,7 @@ func resourceKxVolumeRead(ctx context.Context, d *schema.ResourceData, meta inte
 	d.Set("last_modified_timestamp", out.LastModifiedTimestamp.String())
 	d.Set("availability_zones", aws.StringSlice(out.AvailabilityZoneIds))
 
-	if err := d.Set("nas1configuration", flattenNas1Configuration(out.Nas1Configuration)); err != nil {
+	if err := d.Set("nas1_configuration", flattenNas1Configuration(out.Nas1Configuration)); err != nil {
 		return append(diags, create.DiagError(names.FinSpace, create.ErrActionSetting, ResNameKxVolume, d.Id(), err)...)
 	}
 
@@ -310,17 +313,17 @@ func resourceKxVolumeDelete(ctx context.Context, d *schema.ResourceData, meta in
 		EnvironmentId: aws.String(d.Get("environment_id").(string)),
 	})
 
-	if errs.IsA[*types.ResourceNotFoundException](err) ||
-		errs.IsAErrorMessageContains[*types.ValidationException](err, "The Volume is in DELETED state") {
-		log.Printf("[DEBUG] FinSpace KxVolume %s already deleted. Nothing to delete.", d.Id())
-		return diags
-	}
-
 	if err != nil {
+		var nfe *types.ResourceNotFoundException
+		if errors.As(err, &nfe) {
+			return diags
+		}
+
 		return append(diags, create.DiagError(names.FinSpace, create.ErrActionDeleting, ResNameKxVolume, d.Id(), err)...)
 	}
 
-	if _, err := waitKxVolumeDeleted(ctx, conn, d.Id(), d.Timeout(schema.TimeoutDelete)); err != nil {
+	_, err = waitKxVolumeDeleted(ctx, conn, d.Id(), d.Timeout(schema.TimeoutDelete))
+	if err != nil && !tfresource.NotFound(err) {
 		return append(diags, create.DiagError(names.FinSpace, create.ErrActionWaitingForDeletion, ResNameKxVolume, d.Id(), err)...)
 	}
 
@@ -416,13 +419,6 @@ func findKxVolumeByID(ctx context.Context, conn *finspace.Client, id string) (*f
 		}
 
 		return nil, err
-	}
-	// Treat DELETED status as NotFound
-	if out != nil && out.Status == types.KxVolumeStatusDeleted {
-		return nil, &retry.NotFoundError{
-			LastError:   errors.New("status is deleted"),
-			LastRequest: in,
-		}
 	}
 
 	if out == nil || out.VolumeArn == nil {

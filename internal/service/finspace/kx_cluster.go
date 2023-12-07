@@ -281,16 +281,22 @@ func ResourceKxCluster() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"type": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 							ForceNew: true,
 							ValidateFunc: validation.StringInSlice(
 								enum.Slice(types.KxSavedownStorageTypeSds01), true),
 						},
 						"size": {
 							Type:         schema.TypeInt,
-							Required:     true,
+							Optional:     true,
 							ForceNew:     true,
 							ValidateFunc: validation.IntBetween(10, 16000),
+						},
+						"volume_name": {
+							Type:         schema.TypeString,
+							Optional:     true,
+							ForceNew:     true,
+							ValidateFunc: validation.StringLenBetween(3, 63),
 						},
 					},
 				},
@@ -387,6 +393,24 @@ func ResourceKxCluster() *schema.Resource {
 					},
 				},
 			},
+			"tickerplant_log_configuration": {
+				Type:     schema.TypeList,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"tickerplant_log_volumes": {
+							Type:     schema.TypeSet,
+							Required: true,
+							ForceNew: true,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.StringLenBetween(3, 63),
+							},
+						},
+					},
+				},
+			},
 		},
 
 		CustomizeDiff: verify.SetTagsDiff,
@@ -477,6 +501,10 @@ func resourceKxClusterCreate(ctx context.Context, d *schema.ResourceData, meta i
 		in.ScalingGroupConfiguration = expandScalingGroupConfiguration(v.([]interface{}))
 	}
 
+	if v, ok := d.GetOk("tickerplant_log_configuration"); ok && len(v.([]interface{})) > 0 && v.([]interface{})[0] != nil {
+		in.TickerplantLogConfiguration = expandTickerplantLogConfiguration(v.([]interface{}))
+	}
+
 	out, err := conn.CreateKxCluster(ctx, in)
 	if err != nil {
 		return create.AppendDiagError(diags, names.FinSpace, create.ErrActionCreating, ResNameKxCluster, d.Get("name").(string), err)
@@ -556,6 +584,10 @@ func resourceKxClusterRead(ctx context.Context, d *schema.ResourceData, meta int
 	}
 
 	if err := d.Set("scaling_group_configuration", flattenScalingGroupConfiguration(out.ScalingGroupConfiguration)); err != nil {
+		return append(diags, create.DiagError(names.FinSpace, create.ErrActionSetting, ResNameKxCluster, d.Id(), err)...)
+	}
+
+	if err := d.Set("tickerplant_log_configuration", flattenTickerplantLogConfiguration(out.TickerplantLogConfiguration)); err != nil {
 		return append(diags, create.DiagError(names.FinSpace, create.ErrActionSetting, ResNameKxCluster, d.Id(), err)...)
 	}
 
@@ -868,6 +900,10 @@ func expandSavedownStorageConfiguration(tfList []interface{}) *types.KxSavedownS
 		a.Size = aws.Int32(int32(v))
 	}
 
+	if v, ok := tfMap["volume_name"].(string); ok && v != "" {
+		a.VolumeName = aws.String(v)
+	}
+
 	return a
 }
 
@@ -894,6 +930,22 @@ func expandVPCConfiguration(tfList []interface{}) *types.VpcConfiguration {
 
 	if v, ok := tfMap["ip_address_type"].(string); ok && v != "" {
 		a.IpAddressType = types.IPAddressType(v)
+	}
+
+	return a
+}
+
+func expandTickerplantLogConfiguration(tfList []interface{}) *types.TickerplantLogConfiguration {
+	if len(tfList) == 0 || tfList[0] == nil {
+		return nil
+	}
+
+	tfMap := tfList[0].(map[string]interface{})
+
+	a := &types.TickerplantLogConfiguration{}
+
+	if v, ok := tfMap["tickerplant_log_volumes"].(*schema.Set); ok && v.Len() > 0 {
+		a.TickerplantLogVolumes = flex.ExpandStringValueSet(v)
 	}
 
 	return a
@@ -1173,6 +1225,20 @@ func flattenScalingGroupConfiguration(apiObject *types.KxScalingGroupConfigurati
 	return []interface{}{m}
 }
 
+func flattenTickerplantLogConfiguration(apiObject *types.TickerplantLogConfiguration) []interface{} {
+	if apiObject == nil {
+		return nil
+	}
+
+	m := map[string]interface{}{}
+
+	if v := apiObject.TickerplantLogVolumes; v != nil {
+		m["tickerplant_log_volumes"] = v
+	}
+
+	return []interface{}{m}
+}
+
 func flattenSavedownStorageConfiguration(apiObject *types.KxSavedownStorageConfiguration) []interface{} {
 	if apiObject == nil {
 		return nil
@@ -1186,6 +1252,10 @@ func flattenSavedownStorageConfiguration(apiObject *types.KxSavedownStorageConfi
 
 	if v := aws.ToInt32(apiObject.Size); v >= 10 && v <= 16000 {
 		m["size"] = v
+	}
+
+	if v := apiObject.VolumeName; v != nil {
+		m["volume_name"] = aws.ToString(v)
 	}
 
 	return []interface{}{m}

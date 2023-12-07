@@ -641,6 +641,38 @@ func TestAccFinSpaceKxRDBClusterInScalingGroup_withKxVolume(t *testing.T) {
 	})
 }
 
+func TestAccFinSpaceKxTPClusterInScalingGroup_withKxVolume(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+
+	ctx := acctest.Context(t)
+	var kxcluster finspace.GetKxClusterOutput
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	resourceName := "aws_finspace_kx_cluster.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+			testAccPreCheckManagedKxLicenseEnabled(t)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckKxClusterDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccKxTPClusterConfigInScalingGroup_withKxVolume(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckKxClusterExists(ctx, resourceName, &kxcluster),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "status", string(types.KxClusterStatusRunning)),
+				),
+			},
+		},
+	})
+}
+
 func testAccCheckKxClusterDestroy(ctx context.Context) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		conn := tffinspace.TempFinspaceClient()
@@ -899,6 +931,11 @@ func testAccKxRDBClusterConfigInScalingGroup_withKxVolume(rName string) string {
 		testAccKxClusterConfigKxVolumeBase(rName),
 		testAccKxClusterConfigScalingGroupBase(rName),
 		fmt.Sprintf(`
+resource "aws_finspace_kx_database" "test" {
+    name           = %[1]q
+    environment_id = aws_finspace_kx_environment.test.id
+    }
+
 resource "aws_finspace_kx_cluster" "test" {
   name                 = %[1]q
   environment_id       = aws_finspace_kx_environment.test.id
@@ -918,6 +955,45 @@ resource "aws_finspace_kx_cluster" "test" {
     memory_reservation = 100
     node_count = 1
     cpu = 0.5
+  }
+  database {
+    database_name = aws_finspace_kx_database.test.name
+  }
+  savedown_storage_configuration {
+    volume_name = aws_finspace_kx_volume.test.name
+  }
+}
+`, rName))
+}
+
+func testAccKxTPClusterConfigInScalingGroup_withKxVolume(rName string) string {
+	return acctest.ConfigCompose(
+		testAccKxClusterConfigBase(rName),
+		testAccKxClusterConfigKxVolumeBase(rName),
+		testAccKxClusterConfigScalingGroupBase(rName),
+		fmt.Sprintf(`
+resource "aws_finspace_kx_cluster" "test" {
+  name                 = %[1]q
+  environment_id       = aws_finspace_kx_environment.test.id
+  type                 = "TICKERPLANT"
+  release_label        = "1.0"
+  az_mode              = "SINGLE"
+  availability_zone_id = aws_finspace_kx_environment.test.availability_zones[0]
+  vpc_configuration {
+    vpc_id             = aws_vpc.test.id
+    security_group_ids = [aws_security_group.test.id]
+    subnet_ids         = [aws_subnet.test.id]
+    ip_address_type    = "IP_V4"
+  }
+  scaling_group_configuration {
+    scaling_group_name = aws_finspace_kx_scaling_group.test.name
+    memory_limit = 200
+    memory_reservation = 100
+    node_count = 1
+    cpu = 0.5
+  }
+  tickerplant_log_configuration {
+    tickerplant_log_volumes = [aws_finspace_kx_volume.test.name]
   }
 }
 `, rName))
