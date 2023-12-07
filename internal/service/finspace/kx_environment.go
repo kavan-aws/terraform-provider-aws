@@ -210,11 +210,11 @@ const (
 
 func TempFinspaceClient() *finspace.Client {
 	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-		if service == finspace.ServiceID && region == "us-east-2" {
+		if service == finspace.ServiceID && region == "us-east-1" {
 			return aws.Endpoint{
 				PartitionID:   "aws",
-				URL:           "https://fnkiq3oxn0.execute-api.us-east-2.amazonaws.com/gamma",
-				SigningRegion: "us-east-2",
+				URL:           "https://nwtgwo2x0b.execute-api.us-east-1.amazonaws.com/gamma",
+				SigningRegion: "us-east-1",
 			}, nil
 		}
 		// returning EndpointNotFoundError will allow the service to fallback to it's default resolution

@@ -52,6 +52,36 @@ func TestAccFinSpaceKxDataview_basic(t *testing.T) {
 		},
 	})
 }
+func TestAccFinSpaceKxDataview_disappears(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode.")
+	}
+
+	ctx := acctest.Context(t)
+	var kxdataview finspace.GetKxDataviewOutput
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	resourceName := "aws_finspace_kx_dataview.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckKxDataviewDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccKxDataviewConfig_basic(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckKxDataviewExists(ctx, resourceName, &kxdataview),
+					acctest.CheckResourceDisappears(ctx, acctest.Provider, tffinspace.ResourceKxDataview(), resourceName),
+				),
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
 
 func testAccKxDataviewConfigBase(rName string) string {
 	return fmt.Sprintf(`

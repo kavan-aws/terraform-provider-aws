@@ -226,6 +226,12 @@ func ResourceKxCluster() *schema.Resource {
 							ForceNew:     true,
 							ValidateFunc: validation.StringLenBetween(3, 63),
 						},
+						"dataview_name": {
+							Type:         schema.TypeString,
+							Optional:     true,
+							ForceNew:     true,
+							ValidateFunc: validation.StringLenBetween(3, 63),
+						},
 					},
 				},
 			},
@@ -1032,6 +1038,10 @@ func expandDatabase(tfMap map[string]interface{}) *types.KxDatabaseConfiguration
 		a.DatabaseName = aws.String(v)
 	}
 
+	if v, ok := tfMap["dataview_name"].(string); ok && v != "" {
+		a.DataviewName = aws.String(v)
+	}
+
 	if v, ok := tfMap["cache_configurations"]; ok && len(v.([]interface{})) > 0 && v.([]interface{})[0] != nil {
 		a.CacheConfigurations = expandCacheConfigurations(v.([]interface{}))
 	}
@@ -1382,6 +1392,10 @@ func flattenDatabase(apiObject *types.KxDatabaseConfiguration) map[string]interf
 
 	if v := apiObject.DatabaseName; v != nil {
 		m["database_name"] = aws.ToString(v)
+	}
+
+	if v := apiObject.DataviewName; v != nil {
+		m["dataview_name"] = aws.ToString(v)
 	}
 
 	if v := apiObject.CacheConfigurations; v != nil {

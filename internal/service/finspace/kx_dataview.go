@@ -174,7 +174,7 @@ func resourceKxDataviewCreate(ctx context.Context, d *schema.ResourceData, meta 
 		in.AvailabilityZoneId = aws.String(v.(string))
 	}
 
-	if v, ok := d.GetOk("segment_configurations"); ok && len(v.(map[string]interface{})) > 0 {
+	if v, ok := d.GetOk("segment_configurations"); ok && len(v.([]interface{})) > 0 {
 		in.SegmentConfigurations = expandSegmentConfigurations(v.([]interface{}))
 	}
 
@@ -238,7 +238,7 @@ func resourceKxDataviewUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		in.ChangesetId = aws.String(v.(string))
 	}
 
-	if v, ok := d.GetOk("segment_configurations"); ok && len(v.(map[string]interface{})) > 0 && d.HasChange("segment_configurations") {
+	if v, ok := d.GetOk("segment_configurations"); ok && len(v.([]interface{})) > 0 && d.HasChange("segment_configurations") {
 		in.SegmentConfigurations = expandSegmentConfigurations(v.([]interface{}))
 	}
 
@@ -272,6 +272,9 @@ func resourceKxDataviewDelete(ctx context.Context, d *schema.ResourceData, meta 
 		return append(diags, create.DiagError(names.FinSpace, create.ErrActionDeleting, ResNameKxDataview, d.Get("name").(string), err)...)
 	}
 
+	if _, err := waitKxDataviewDeleted(ctx, conn, d.Id(), d.Timeout(schema.TimeoutDelete)); err != nil && !tfresource.NotFound(err) {
+		return append(diags, create.DiagError(names.FinSpace, create.ErrActionWaitingForDeletion, ResNameKxDataview, d.Id(), err)...)
+	}
 	return diags
 }
 
@@ -340,6 +343,23 @@ func waitKxDataviewUpdated(ctx context.Context, conn *finspace.Client, id string
 	}
 	return nil, err
 }
+
+func waitKxDataviewDeleted(ctx context.Context, conn *finspace.Client, id string, timeout time.Duration) (*finspace.GetKxDataviewOutput, error) {
+	stateConf := &retry.StateChangeConf{
+		Pending: enum.Slice(types.KxDataviewStatusDeleting),
+		Target:  []string{},
+		Refresh: statusKxDataview(ctx, conn, id),
+		Timeout: timeout,
+	}
+
+	outputRaw, err := stateConf.WaitForStateContext(ctx)
+	if out, ok := outputRaw.(*finspace.GetKxDataviewOutput); ok {
+		return out, err
+	}
+
+	return nil, err
+}
+
 func statusKxDataview(ctx context.Context, conn *finspace.Client, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		out, err := findKxDataviewById(ctx, conn, id)
@@ -353,14 +373,14 @@ func statusKxDataview(ctx context.Context, conn *finspace.Client, id string) ret
 	}
 }
 
-func expandDbPath(tfList []string) []string {
+func expandDbPath(tfList []interface{}) []string {
 	if tfList == nil {
 		return nil
 	}
 	var s []string
 
 	for _, v := range tfList {
-		s = append(s, v)
+		s = append(s, v.(string))
 	}
 	return s
 }
@@ -375,7 +395,7 @@ func expandSegmentConfigurations(tfList []interface{}) []types.KxDataviewSegment
 		m := v.(map[string]interface{})
 		s = append(s, types.KxDataviewSegmentConfiguration{
 			VolumeName: aws.String(m["volume_name"].(string)),
-			DbPaths:    expandDbPath(m["db_paths"].([]string)),
+			DbPaths:    expandDbPath(m["db_paths"].([]interface{})),
 		})
 	}
 
