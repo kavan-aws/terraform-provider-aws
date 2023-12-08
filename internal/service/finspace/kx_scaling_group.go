@@ -197,6 +197,7 @@ func resourceKxScalingGroupRead(ctx context.Context, d *schema.ResourceData, met
 	if err != nil {
 		return append(diags, create.DiagError(names.FinSpace, create.ErrActionReading, ResNameKxScalingGroup, d.Id(), err)...)
 	}
+	d.Set("arn", out.ScalingGroupArn)
 	d.Set("status", out.Status)
 	d.Set("status_reason", out.StatusReason)
 	d.Set("created_timestamp", out.CreatedTimestamp.String())
