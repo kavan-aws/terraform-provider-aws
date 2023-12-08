@@ -186,6 +186,8 @@ The vpc_configuration block supports the following arguments:
 
 ### tickerplant_log_configuration
 
+The tickerplant_log_configuration block supports the following arguments:
+
 * tickerplant_log_volumes - (Required) The names of the volumes for tickerplant logs.
 
 ## Attribute Reference
