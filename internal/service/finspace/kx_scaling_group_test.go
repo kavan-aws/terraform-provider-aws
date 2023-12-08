@@ -57,6 +57,37 @@ func TestAccFinSpaceKxScalingGroup_basic(t *testing.T) {
 	})
 }
 
+func TestAccFinSpaceKxScalingGroup_dissappears(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+
+	ctx := acctest.Context(t)
+	var KxScalingGroup finspace.GetKxScalingGroupOutput
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	resourceName := "aws_finspace_kx_scaling_group.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckKxScalingGroupDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccKxScalingGroupConfig_basic(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckKxScalingGroupExists(ctx, resourceName, &KxScalingGroup),
+					acctest.CheckResourceDisappears(ctx, acctest.Provider, tffinspace.ResourceKxScalingGroup(), resourceName),
+				),
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
+
 func testAccCheckKxScalingGroupDestroy(ctx context.Context) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		conn := tffinspace.TempFinspaceClient()
@@ -235,7 +266,7 @@ func testAccKxScalingGroupConfig_basic(rName string) string {
 			name                 = %[1]q
 			environment_id       = aws_finspace_kx_environment.test.id
 			availability_zone_id = aws_finspace_kx_environment.test.availability_zones[0]
-			host_type            = "kx.sg.large"
+			host_type            = "kx.sg.4xlarge"
 		}
 		`, rName))
 }

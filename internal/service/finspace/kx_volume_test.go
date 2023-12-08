@@ -57,6 +57,37 @@ func TestAccFinSpaceKxVolume_basic(t *testing.T) {
 	})
 }
 
+func TestAccFinSpaceKxVolume_dissappears(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+
+	ctx := acctest.Context(t)
+	var KxVolume finspace.GetKxVolumeOutput
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	resourceName := "aws_finspace_kx_volume.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			acctest.PreCheckPartitionHasService(t, finspace.ServiceID)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, finspace.ServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckKxVolumeDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccKxVolumeConfig_basic(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckKxVolumeExists(ctx, resourceName, &KxVolume),
+					acctest.CheckResourceDisappears(ctx, acctest.Provider, tffinspace.ResourceKxVolume(), resourceName),
+				),
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
+
 func testAccCheckKxVolumeDestroy(ctx context.Context) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		conn := tffinspace.TempFinspaceClient()
