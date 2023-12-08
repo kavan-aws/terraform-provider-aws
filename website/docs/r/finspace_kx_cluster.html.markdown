@@ -148,7 +148,8 @@ The database block supports the following arguments:
 * `database_name` - (Required) Name of the KX database.
 * `cache_configurations` - (Optional) Configuration details for the disk cache to increase performance reading from a KX database mounted to the cluster. See [cache_configurations](#cache_configurations).
 * `changeset_id` - (Optional) A unique identifier of the changeset that is associated with the cluster.
-* `dataview_name` - (Optional) 	The name of the dataview to be used for caching historical data on disk.
+* `dataview_name` - (Optional) 	The name of the dataview to be used for caching historical data on disk. You cannot update to a different dataview name once a cluster is created. Use `lifecycle` [`ignore_changes`](https://www.terraform.io/docs/configuration/meta-arguments/lifecycle.html#ignore_changes) for database to prevent any undesirable behaviors. 
+  
 
 #### cache_configurations
 
