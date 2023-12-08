@@ -90,7 +90,7 @@ func ResourceKxVolume() *schema.Resource {
 			},
 			"nas1_configuration": {
 				Type:     schema.TypeList,
-				Required: true,
+				Optional: true,
 				ForceNew: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{

@@ -603,6 +603,13 @@ func TestAccFinSpaceKxCluster_ScalingGroup(t *testing.T) {
 					testAccCheckKxClusterExists(ctx, resourceName, &kxcluster),
 					resource.TestCheckResourceAttr(resourceName, "name", rName),
 					resource.TestCheckResourceAttr(resourceName, "status", string(types.KxClusterStatusRunning)),
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "scaling_group_configuration.*", map[string]string{
+						"scaling_group_name": rName,
+						"memory_limit":       "200",
+						"memory_reservation": "100",
+						"node_count":         "1",
+						"cpu":                "0.5",
+					}),
 				),
 			},
 		},
