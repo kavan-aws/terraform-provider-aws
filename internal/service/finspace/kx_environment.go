@@ -6,6 +6,7 @@ package finspace
 import (
 	"context"
 	"errors"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"log"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
 	"github.com/hashicorp/terraform-provider-aws/internal/enum"
 	"github.com/hashicorp/terraform-provider-aws/internal/errs"
@@ -201,6 +201,22 @@ func ResourceKxEnvironment() *schema.Resource {
 		CustomizeDiff: verify.SetTagsDiff,
 	}
 }
+func TempFinspaceClient() *finspace.Client {
+	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+		if service == finspace.ServiceID && region == "us-east-1" {
+			return aws.Endpoint{
+				PartitionID:   "aws",
+				URL:           "https://nwtgwo2x0b.execute-api.us-east-1.amazonaws.com/gamma",
+				SigningRegion: "us-east-1",
+			}, nil
+		}
+		// returning EndpointNotFoundError will allow the service to fallback to it's default resolution
+		return aws.Endpoint{}, &aws.EndpointNotFoundError{}
+	})
+
+	cfg, _ := config.LoadDefaultConfig(context.TODO(), config.WithEndpointResolverWithOptions(customResolver))
+	return finspace.NewFromConfig(cfg)
+}
 
 const (
 	ResNameKxEnvironment = "Kx Environment"
@@ -208,7 +224,7 @@ const (
 
 func resourceKxEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	in := &finspace.CreateKxEnvironmentInput{
 		Name:        aws.String(d.Get("name").(string)),
@@ -253,7 +269,7 @@ func resourceKxEnvironmentCreate(ctx context.Context, d *schema.ResourceData, me
 
 func resourceKxEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	out, err := findKxEnvironmentByID(ctx, conn, d.Id())
 
@@ -291,7 +307,7 @@ func resourceKxEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta
 
 func resourceKxEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	update := false
 
@@ -328,7 +344,7 @@ func resourceKxEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, me
 
 func resourceKxEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	log.Printf("[INFO] Deleting FinSpace Kx Environment: %s", d.Id())
 	_, err := conn.DeleteKxEnvironment(ctx, &finspace.DeleteKxEnvironmentInput{

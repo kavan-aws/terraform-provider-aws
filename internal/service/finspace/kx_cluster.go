@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
 	"github.com/hashicorp/terraform-provider-aws/internal/enum"
 	"github.com/hashicorp/terraform-provider-aws/internal/flex"
@@ -430,7 +429,7 @@ const (
 
 func resourceKxClusterCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	environmentId := d.Get("environment_id").(string)
 	clusterName := d.Get("name").(string)
@@ -528,7 +527,7 @@ func resourceKxClusterCreate(ctx context.Context, d *schema.ResourceData, meta i
 
 func resourceKxClusterRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	out, err := findKxClusterByID(ctx, conn, d.Id())
 	if !d.IsNewResource() && tfresource.NotFound(err) {
@@ -614,7 +613,7 @@ func resourceKxClusterRead(ctx context.Context, d *schema.ResourceData, meta int
 
 func resourceKxClusterUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	updateDb := false
 	updateCode := false
@@ -679,7 +678,7 @@ func resourceKxClusterUpdate(ctx context.Context, d *schema.ResourceData, meta i
 
 func resourceKxClusterDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	log.Printf("[INFO] Deleting FinSpace KxCluster %s", d.Id())
 	_, err := conn.DeleteKxCluster(ctx, &finspace.DeleteKxClusterInput{

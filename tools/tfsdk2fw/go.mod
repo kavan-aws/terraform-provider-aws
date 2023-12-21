@@ -17,13 +17,13 @@ require (
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
-	github.com/aws/aws-sdk-go v1.49.4 // indirect
+	github.com/aws/aws-sdk-go v1.49.5 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.24.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.5.4 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.26.1 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.16.12 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.14.10 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.15.7 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.15.8 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.9 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.9 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.7.2 // indirect
@@ -58,7 +58,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.26.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.141.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.24.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/eks v1.35.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/eks v1.36.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/emr v1.35.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/emrserverless v1.14.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/evidently v1.16.5 // indirect
@@ -67,7 +67,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/glacier v1.19.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/healthlake v1.20.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/iam v1.28.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/identitystore v1.21.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/identitystore v1.21.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/inspector2 v1.20.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.2.9 // indirect
@@ -102,8 +102,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.19.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/rolesanywhere v1.6.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/route53domains v1.20.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.47.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3control v1.41.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.47.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/s3control v1.41.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/scheduler v1.6.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/securityhub v1.44.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/securitylake v1.10.5 // indirect

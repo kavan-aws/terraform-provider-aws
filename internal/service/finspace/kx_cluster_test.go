@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-provider-aws/internal/acctest"
-	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
 	tffinspace "github.com/hashicorp/terraform-provider-aws/internal/service/finspace"
 	"github.com/hashicorp/terraform-provider-aws/names"
@@ -706,7 +705,7 @@ func TestAccFinSpaceKxCluster_InScalingGroupWithKxDataview(t *testing.T) {
 
 func testAccCheckKxClusterDestroy(ctx context.Context) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		conn := acctest.Provider.Meta().(*conns.AWSClient).FinSpaceClient(ctx)
+		conn := tffinspace.TempFinspaceClient()
 
 		for _, rs := range s.RootModule().Resources {
 			if rs.Type != "aws_finspace_kx_cluster" {
@@ -744,7 +743,7 @@ func testAccCheckKxClusterExists(ctx context.Context, name string, kxcluster *fi
 			return create.Error(names.FinSpace, create.ErrActionCheckingExistence, tffinspace.ResNameKxCluster, name, errors.New("not set"))
 		}
 
-		conn := acctest.Provider.Meta().(*conns.AWSClient).FinSpaceClient(ctx)
+		conn := tffinspace.TempFinspaceClient()
 		resp, err := conn.GetKxCluster(ctx, &finspace.GetKxClusterInput{
 			ClusterName:   aws.String(rs.Primary.Attributes["name"]),
 			EnvironmentId: aws.String(rs.Primary.Attributes["environment_id"]),
@@ -791,7 +790,7 @@ data "aws_iam_policy_document" "key_policy" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {
@@ -1135,7 +1134,7 @@ data "aws_iam_policy_document" "bucket_policy" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {
@@ -1162,7 +1161,7 @@ data "aws_iam_policy_document" "bucket_policy" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {
@@ -1483,7 +1482,7 @@ data "aws_iam_policy_document" "bucket_policy" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {
@@ -1510,7 +1509,7 @@ data "aws_iam_policy_document" "bucket_policy" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {
@@ -1669,7 +1668,7 @@ resource "aws_iam_role" "test" {
         Effect = "Allow"
         Sid    = ""
         Principal = {
-          "Service" : "prod.finspacekx.aws.internal",
+          "Service" : "gamma.finspacekx.aws.internal",
           "AWS" : "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:root"
         }
       },
@@ -1757,7 +1756,7 @@ data "aws_iam_policy_document" "test" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {
@@ -1784,7 +1783,7 @@ data "aws_iam_policy_document" "test" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {

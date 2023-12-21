@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-provider-aws/internal/acctest"
-	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
 	tffinspace "github.com/hashicorp/terraform-provider-aws/internal/service/finspace"
 	"github.com/hashicorp/terraform-provider-aws/names"
@@ -146,7 +145,7 @@ func TestAccFinSpaceKxScalingGroup_tags(t *testing.T) {
 
 func testAccCheckKxScalingGroupDestroy(ctx context.Context) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		conn := acctest.Provider.Meta().(*conns.AWSClient).FinSpaceClient(ctx)
+		conn := tffinspace.TempFinspaceClient()
 
 		for _, rs := range s.RootModule().Resources {
 			if rs.Type != "aws_finspace_kx_scaling_group" {
@@ -180,7 +179,7 @@ func testAccCheckKxScalingGroupExists(ctx context.Context, name string, scalingG
 			return create.Error(names.FinSpace, create.ErrActionCheckingExistence, tffinspace.ResNameKxScalingGroup, name, errors.New("not set"))
 		}
 
-		conn := acctest.Provider.Meta().(*conns.AWSClient).FinSpaceClient(ctx)
+		conn := tffinspace.TempFinspaceClient()
 
 		resp, err := tffinspace.FindKxScalingGroupById(ctx, conn, rs.Primary.ID)
 		if err != nil {
@@ -224,7 +223,7 @@ data "aws_iam_policy_document" "key_policy" {
 
     principals {
       type        = "Service"
-      identifiers = ["finspace.amazonaws.com"]
+      identifiers = ["gamma.finspace.aws.internal"]
     }
 
     condition {

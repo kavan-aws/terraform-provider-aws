@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-provider-aws/internal/acctest"
-	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
 	tffinspace "github.com/hashicorp/terraform-provider-aws/internal/service/finspace"
 	"github.com/hashicorp/terraform-provider-aws/names"
@@ -130,7 +129,7 @@ func testAccCheckKxDataviewExists(ctx context.Context, name string, dataview *fi
 			return create.Error(names.FinSpace, create.ErrActionCheckingExistence, tffinspace.ResNameKxDataview, name, errors.New("not set"))
 		}
 
-		conn := acctest.Provider.Meta().(*conns.AWSClient).FinSpaceClient(ctx)
+		conn := tffinspace.TempFinspaceClient()
 
 		resp, err := tffinspace.FindKxDataviewById(ctx, conn, rs.Primary.ID)
 		if err != nil {
@@ -150,7 +149,7 @@ func testAccCheckKxDataviewDestroy(ctx context.Context) resource.TestCheckFunc {
 				continue
 			}
 
-			conn := acctest.Provider.Meta().(*conns.AWSClient).FinSpaceClient(ctx)
+			conn := tffinspace.TempFinspaceClient()
 
 			_, err := tffinspace.FindKxDataviewById(ctx, conn, rs.Primary.ID)
 			if err != nil {

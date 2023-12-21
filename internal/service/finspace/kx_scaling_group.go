@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
 	"github.com/hashicorp/terraform-provider-aws/internal/enum"
 	"github.com/hashicorp/terraform-provider-aws/internal/flex"
@@ -110,7 +109,7 @@ const (
 
 func resourceKxScalingGroupCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	environmentId := d.Get("environment_id").(string)
 	scalingGroupName := d.Get("name").(string)
@@ -150,7 +149,7 @@ func resourceKxScalingGroupCreate(ctx context.Context, d *schema.ResourceData, m
 
 func resourceKxScalingGroupRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	out, err := FindKxScalingGroupById(ctx, conn, d.Id())
 	if !d.IsNewResource() && tfresource.NotFound(err) {
@@ -189,7 +188,7 @@ func resourceKxScalingGroupUpdate(ctx context.Context, d *schema.ResourceData, m
 
 func resourceKxScalingGroupDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	log.Printf("[INFO] Deleting FinSpace KxScalingGroup %s", d.Id())
 	_, err := conn.DeleteKxScalingGroup(ctx, &finspace.DeleteKxScalingGroupInput{

@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-provider-aws/internal/acctest"
-	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
 	tffinspace "github.com/hashicorp/terraform-provider-aws/internal/service/finspace"
 	"github.com/hashicorp/terraform-provider-aws/names"
@@ -367,7 +366,7 @@ func TestAccFinSpaceKxEnvironment_tags(t *testing.T) {
 
 func testAccCheckKxEnvironmentDestroy(ctx context.Context) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		conn := acctest.Provider.Meta().(*conns.AWSClient).FinSpaceClient(ctx)
+		conn := tffinspace.TempFinspaceClient()
 
 		for _, rs := range s.RootModule().Resources {
 			if rs.Type != "aws_finspace_kx_environment" {
@@ -406,7 +405,7 @@ func testAccCheckKxEnvironmentExists(ctx context.Context, name string, kxenviron
 			return create.Error(names.FinSpace, create.ErrActionCheckingExistence, tffinspace.ResNameKxEnvironment, name, errors.New("not set"))
 		}
 
-		conn := acctest.Provider.Meta().(*conns.AWSClient).FinSpaceClient(ctx)
+		conn := tffinspace.TempFinspaceClient()
 		resp, err := conn.GetKxEnvironment(ctx, &finspace.GetKxEnvironmentInput{
 			EnvironmentId: aws.String(rs.Primary.ID),
 		})

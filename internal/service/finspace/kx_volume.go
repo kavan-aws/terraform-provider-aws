@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
 	"github.com/hashicorp/terraform-provider-aws/internal/enum"
 	"github.com/hashicorp/terraform-provider-aws/internal/flex"
@@ -165,7 +164,7 @@ const (
 
 func resourceKxVolumeCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	environmentId := d.Get("environment_id").(string)
 	volumeName := d.Get("name").(string)
@@ -221,7 +220,7 @@ func resourceKxVolumeCreate(ctx context.Context, d *schema.ResourceData, meta in
 
 func resourceKxVolumeRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	out, err := FindKxVolumeByID(ctx, conn, d.Id())
 
@@ -266,7 +265,7 @@ func resourceKxVolumeRead(ctx context.Context, d *schema.ResourceData, meta inte
 
 func resourceKxVolumeUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	updateVolume := false
 
@@ -303,7 +302,7 @@ func resourceKxVolumeUpdate(ctx context.Context, d *schema.ResourceData, meta in
 
 func resourceKxVolumeDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	conn := meta.(*conns.AWSClient).FinSpaceClient(ctx)
+	conn := TempFinspaceClient()
 
 	log.Printf("[INFO] Deleting FinSpace Kx Volume: %s", d.Id())
 	_, err := conn.DeleteKxVolume(ctx, &finspace.DeleteKxVolumeInput{
