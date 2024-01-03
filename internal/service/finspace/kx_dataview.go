@@ -35,13 +35,14 @@ import (
 	"time"
 )
 
-// @SDKResource("aws_finspace_kx_dataview", name="Kx Dataview")
+// @FrameworkResource(name="Kx Dataview")
 // @Tags(identifierAttribute="arn")
 func newResourceKxDataview(context.Context) (resource.ResourceWithConfigure, error) {
 	r := &resourceKxDataview{}
 	r.SetDefaultCreateTimeout(30 * time.Minute)
 	r.SetDefaultReadTimeout(30 * time.Minute)
 	r.SetDefaultDeleteTimeout(30 * time.Minute)
+	r.SetMigratedFromPluginSDK(true)
 
 	return r, nil
 }
@@ -54,6 +55,7 @@ type resourceKxDataview struct {
 func (r *resourceKxDataview) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "aws_finspace_kx_dataview"
 }
+
 func (r *resourceKxDataview) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

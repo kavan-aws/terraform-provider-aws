@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -366,7 +367,7 @@ func TestAccFinSpaceKxEnvironment_tags(t *testing.T) {
 
 func testAccCheckKxEnvironmentDestroy(ctx context.Context) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		conn := tffinspace.TempFinspaceClient()
+		conn := acctest.Provider.Meta().(*conns.AWSClient).FinSpaceClient(ctx)
 
 		for _, rs := range s.RootModule().Resources {
 			if rs.Type != "aws_finspace_kx_environment" {
@@ -405,7 +406,7 @@ func testAccCheckKxEnvironmentExists(ctx context.Context, name string, kxenviron
 			return create.Error(names.FinSpace, create.ErrActionCheckingExistence, tffinspace.ResNameKxEnvironment, name, errors.New("not set"))
 		}
 
-		conn := tffinspace.TempFinspaceClient()
+		conn := acctest.Provider.Meta().(*conns.AWSClient).FinSpaceClient(ctx)
 		resp, err := conn.GetKxEnvironment(ctx, &finspace.GetKxEnvironmentInput{
 			EnvironmentId: aws.String(rs.Primary.ID),
 		})
